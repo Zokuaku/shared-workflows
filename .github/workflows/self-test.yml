@@ -1,5 +1,6 @@
-# This repository tests its own workflow: a clean module must pass every check, and a module
-# with one planted defect per check must make exactly that check fail.
+# This repository tests its own workflows: a clean module must pass every check, and a module
+# with one planted defect per check must make exactly that check fail. The release workflow is
+# tested the same way, as a dry run.
 name: self-test
 
 on:
@@ -42,4 +43,28 @@ jobs:
     with:
       working_directory: tests/fixtures/planted-test
       checks: test
+      expect_failure: true
+
+  planted-scan:
+    uses: ./.github/workflows/terraform-module.yml
+    with:
+      working_directory: tests/fixtures/planted-scan
+      checks: scan
+      expect_failure: true
+
+  # The release workflow, without releasing anything: notes are built for a version the
+  # fixture changelog has, and refused for one it does not.
+  release-notes:
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: v9.9.9
+      changelog: tests/fixtures/release/CHANGELOG.md
+      dry_run: true
+
+  planted-release-notes:
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: v9.9.8
+      changelog: tests/fixtures/release/CHANGELOG.md
+      dry_run: true
       expect_failure: true
