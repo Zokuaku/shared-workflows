@@ -1,4 +1,4 @@
-# Reusable checks for a Terraform module repository: format, validate, lint, test.
+# Reusable checks for a Terraform module repository: format, validate, lint, test, scan.
 #
 # Called from the module repository's own workflow:
 #
@@ -26,10 +26,14 @@ on:
         description: TFLint version, exact.
         type: string
         default: "v0.64.0"
-      checks:
-        description: Which checks to run, space-separated. Any of fmt validate tflint test.
+      checkov_image:
+        description: The checkov container image, pinned by digest.
         type: string
-        default: "fmt validate tflint test"
+        default: "bridgecrew/checkov:3.3.29@sha256:3cc125b5337717b7303dbddd4e79374c120687b5ff6a24f9abdad56b562469f3"
+      checks:
+        description: Which checks to run, space-separated. Any of fmt validate tflint test scan.
+        type: string
+        default: "fmt validate tflint test scan"
       expect_failure:
         description: >-
           For this repository's self-test only. The selected checks must FAIL, because the
@@ -137,3 +141,25 @@ jobs:
         run: terraform init -backend=false -input=false
       - name: terraform test
         run: ${{ inputs.expect_failure && '!' || '' }} terraform test
+
+  scan:
+    name: scan
+    if: contains(format(' {0} ', inputs.checks), ' scan ')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: checkov
+        env:
+          CHECKOV_IMAGE: ${{ inputs.checkov_image }}
+        # A module that accepts a finding on purpose says so in its own .checkov.yaml
+        # (skip-check, with the reason in a comment), where the choice is reviewed.
+        run: |
+          args=(--directory . --framework terraform --compact --quiet)
+          if [ -f .checkov.yaml ]; then args+=(--config-file .checkov.yaml); fi
+          ${{ inputs.expect_failure && '!' || '' }} docker run --rm --volume "$PWD:/src" --workdir /src "$CHECKOV_IMAGE" "${args[@]}"
