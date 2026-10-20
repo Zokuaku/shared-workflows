@@ -1,0 +1,45 @@
+# This repository tests its own workflow: a clean module must pass every check, and a module
+# with one planted defect per check must make exactly that check fail.
+name: self-test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  clean-module:
+    uses: ./.github/workflows/terraform-module.yml
+    with:
+      working_directory: tests/fixtures/clean
+
+  planted-fmt:
+    uses: ./.github/workflows/terraform-module.yml
+    with:
+      working_directory: tests/fixtures/planted-fmt
+      checks: fmt
+      expect_failure: true
+
+  planted-validate:
+    uses: ./.github/workflows/terraform-module.yml
+    with:
+      working_directory: tests/fixtures/planted-validate
+      checks: validate
+      expect_failure: true
+
+  planted-tflint:
+    uses: ./.github/workflows/terraform-module.yml
+    with:
+      working_directory: tests/fixtures/planted-tflint
+      checks: tflint
+      expect_failure: true
+
+  planted-test:
+    uses: ./.github/workflows/terraform-module.yml
+    with:
+      working_directory: tests/fixtures/planted-test
+      checks: test
+      expect_failure: true
